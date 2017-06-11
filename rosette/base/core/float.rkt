@@ -45,7 +45,7 @@
   #:property prop:procedure ; Recognizes fp values of this type.
   (lambda (self v)
     (match v
-      [(fp _ (== self)) #t]
+      [(fp _ _ _ (== self)) #t]
       [(term _ (== self)) #t]
       [(union vs t)
        (and (subtype? self t)
@@ -59,7 +59,7 @@
    (define (type-applicable? self) #f)
    (define (type-cast self v [caller 'type-cast])
      (match v
-       [(fp _ (== self)) v]
+       [(fp _ _ _ (== self)) v]
        [(term _ (== self)) v]
        [(union (list _ ... (cons gt (and (? typed? vt) (app get-type (== self)))) _ ...) _) 
         (assert gt (thunk (error caller "expected ~a, given ~.a" self v)))
@@ -130,7 +130,7 @@
   (unless (and (bitvector? sign) (= (bitvector-size sign 1)) (bitvector? exponent) (bitvector? significand))
     (raise-arguments-error 'fp "(bitvector? 1) bitvector? bitvector?"
                            "sign" sign "exponent" exponent "significand" significand))
-  (fp sign exponent significand (float (bitvector-size exponent) (bitvector-size significand)))
+  (fp sign exponent significand (float (bitvector-size exponent) (bitvector-size significand))))
 
 ; Pattern matching for floating point literals. (I don't actually know if this is right)
 (define-match-expander @fp
@@ -239,6 +239,9 @@
     
 
 ;; ;; ----------------- Bitvector Comparison Operators ----------------- ;; 
+
+(define (@fpeq x y)
+  (raise 'unimplemented))
 
 ;; (define (bveq x y) 
 ;;   (match* (x y)
