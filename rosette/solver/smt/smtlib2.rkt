@@ -83,14 +83,14 @@
   (define-values (id ...)
     (values (lambda e `(id ,@e)) ...)))
 
-(define-syntax-rule (define-consts id ...)
+(define-syntax-rule (define-names id ...)
   (define-values (id ...)
     (values 'id ...)))
 
-; Core theoryRosette: Add support for quantifiers 
-(define Bool 'Bool)
-(define true 'true)
-(define false 'false)
+; Core theoryRosette: Add support for quantifiers
+(define-names
+  Bool
+  true false)
 (define-ops not and or xor => ite = distinct)
 (define (<=> l r) (and (=> l r) (=> r l)))
 
@@ -115,8 +115,7 @@
   `((_ sign_extend ,i) ,b))
 
 ; Int and Real theories
-(define Int 'Int)
-(define Real 'Real)
+(define-names Int Real)
 (define-ops
   + - * / div mod abs 
   < <= 
@@ -132,11 +131,11 @@
 (define (exists vars body)
   (quantified 'exists vars body))
 
-;; Float Theor
+;; Float Theory
 (define (FloatingPoint exp-size significand-size)
   `(_ FloatingPoint ,exp-size ,significand-size))
 
-(define-consts
+(define-names
   Float16
   Float32
   Float64
@@ -164,7 +163,7 @@
   `(_ NaN ,exp-size ,significand-size))
 
 ; Rounding Modes
-(define-consts
+(define-names
   RoundingMode
   roundNearestTiesToEven RNE
   roundNearestTiesToAway RNA

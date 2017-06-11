@@ -16,7 +16,10 @@
                   @bvnot @bvor @bvand @bvxor @bvshl @bvlshr @bvashr
                   @bvneg @bvadd @bvmul @bvudiv @bvsdiv @bvurem @bvsrem @bvsmod
                   @concat @extract @zero-extend @sign-extend 
-                  @integer->bitvector @bitvector->integer @bitvector->natural))
+                  @integer->bitvector @bitvector->integer @bitvector->natural)
+         (only-in "../../base/core/float.rkt"
+                  fp
+                  @fpisnormal?))
 
 (provide enc)
 
@@ -84,7 +87,8 @@
     [(? integer?) (inexact->exact v)]
     [(? real?) (enc-real v)]
     [(bv lit t) ($bv lit (bitvector-size t))]
-    [_ (error 'enc "expected a boolean?, integer?, real?, or bitvector?, given ~a" v)]))
+    [(fp sign exp significand t) ($fp sign exp significand)]
+    [_ (error 'enc "expected a boolean?, integer?, real?, bitvector?, or float?, given ~a" v)]))
 
 (define-syntax-rule (enc-real v)
   (if (exact? v) ($/ (numerator v) (denominator v)) (string->symbol (~r v))))
@@ -110,7 +114,10 @@
   [@bvnot $bvnot] [@bvor $bvor] [@bvand $bvand] [@bvxor $bvxor] 
   [@bvshl $bvshl] [@bvlshr $bvlshr] [@bvashr $bvashr]
   [@bvneg $bvneg] [@bvadd $bvadd] [@bvmul $bvmul] [@bvudiv $bvudiv] [@bvsdiv $bvsdiv]
-  [@bvurem $bvurem] [@bvsrem $bvsrem] [@bvsmod $bvsmod] [@concat $concat])
+  [@bvurem $bvurem] [@bvsrem $bvsrem] [@bvsmod $bvsmod] [@concat $concat]
+  ; floats
+  [@fpnormal? $fp.isNormal]
+  )
 
 
 (define ($quotient tx ty)

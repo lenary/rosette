@@ -9,10 +9,8 @@
 
 (provide
  (rename-out [@fp fp]) @fp? fp? fp-sign fp-exponent fp-significand fp-type
- ; (rename-out [@float float])
- float
- float-eb float-sb float?
- )
+ (rename-out [@float float]) float-eb float-sb float?
+ @fpisnormal?)
 
 ;; (provide 
 ;;  (rename-out [@bv bv]) @bv? bv? bv-value bv-type
@@ -26,18 +24,12 @@
 
 ;; ----------------- Floating Point Types ----------------- ;; 
 
-;; ; Let's not worry about this yet...
-;; ; Cache of all bitvector types constructed so far, mapping sizes to types.
-;; (define bitvector-types (make-hash))
-
-;; ; Returns the bitvector type of the given size.
-;; (define (bitvector-type size)
-;;   (unless (exact-positive-integer? size)
-;;     (raise-argument-error 'bitvector "exact-positive-integer?" size))
-;;   (or (hash-ref bitvector-types size #f)
-;;       (let ([t (bitvector size)]) 
-;;         (hash-set! bitvector-types size t)
-;;         t)))
+(define (float-type eb sb)
+  (unless (exact-positive-integer? eb)
+    (raise-argument-error 'float "exact-positive-integer?" eb))
+  (unless (exact-positive-integer? sb)
+    (raise-argument-error 'float "exact-positive-integer?" sb))
+  (float eb sb))
 
 ; Represents a floating point type.
 (struct float (eb sb)
@@ -78,17 +70,10 @@
   [(define (write-proc self port m) 
      (fprintf port "(float ~a ~a)" (float-eb self) (float-sb self)))])
 
-;; ; I suspect we will need to do something with this...
-;; ; Pattern matching for bitvector types.
-;; (define-match-expander @bitvector
-;;   (syntax-rules ()
-;;     [(_ sz) (bitvector sz)])
-;;   (make-variable-like-transformer #'bitvector-type))
-
-;; (define (bvsmin t) (- (expt 2 (- (bitvector-size t) 1))))
-;; (define (bvsmin? b) (and (bv? b) (= (bv-value b) (bvsmin (bv-type b)))))
-;; (define (bvsmax t) (- (expt 2 (- (bitvector-size t) 1)) 1))
-;; (define (bvsmax? b) (and (bv? b) (= (bv-value b) (bvsmax (bv-type b)))))
+(define-match-expander @float
+  (syntax-rules ()
+    [(_ eb sb) (float eb sb)])
+  (make-variable-like-transformer #'float-type))
 
 (define (is-float? v) (and (typed? v) (float? (get-type v))))
 
@@ -107,30 +92,19 @@
               (fp-significand self)
               (fp-type self)))])
 
-;; ; I do not know if we need these, probably not...
-;; ; Returns a signed representation of the given number, using the specified bitwidth.
-;; ; Assumes that val is a real, non-infinite, non-NaN number.
-;; (define (sfinitize val bitwidth) 
-;;   (let* ([mask (arithmetic-shift -1 bitwidth)]
-;;          [masked (bitwise-and (bitwise-not mask) (exact-truncate val))])
-;;     (if (bitwise-bit-set? masked (- bitwidth 1))
-;;         (bitwise-ior mask masked)  
-;;         masked)))
-
-;; ; Returns an unsigned representation of the given number, using the specified bitwidth.
-;; ; Assumes that val is a real, non-infinite, non-NaN number.
-;; (define (ufinitize val bitwidth) 
-;;   (let* ([mask (arithmetic-shift -1 bitwidth)]
-;;          [masked (bitwise-and (bitwise-not mask) (exact-truncate val))])
-;;     masked))
-
 ; simple fp constructor, infers eb and sb from the bitvector types of exponent
 ; and significand.
 (define (make-fp sign exponent significand)
-  (unless (and (bitvector? sign) (= (bitvector-size sign 1)) (bitvector? exponent) (bitvector? significand))
-    (raise-arguments-error 'fp "(bitvector? 1) bitvector? bitvector?"
-                           "sign" sign "exponent" exponent "significand" significand))
-  (fp sign exponent significand (float (bitvector-size exponent) (bitvector-size significand))))
+  (unless (and (bv? sign)
+               (= (bitvector-size (bv-type sign)) 1))
+    (raise-arguments-error 'fp "expected a 1-bit bitvector" "sign" sign))
+  (unless (bv? exponent)
+    (raise-argument-error 'fp "bv?" exponent))
+  (unless (bv? significand)
+    (raise-argument-error 'fp "bv?" significand))
+  (fp sign exponent significand
+      (float (bitvector-size (bv-type exponent))
+             (bitvector-size (bv-type significand)))))
 
 ; Pattern matching for floating point literals. (I don't actually know if this is right)
 (define-match-expander @fp
@@ -146,6 +120,10 @@
     [(union xs (== @any/c))
      (apply || (for/list ([gv xs] #:when (@fp? (cdr gv))) (car gv)))]
     [_ #f]))
+
+
+;; TODO: Inf, Nan, 0 constructor functions.
+
 
 
 ;; ;; ----------------- Lifitng Utilities ----------------- ;;
@@ -542,14 +520,30 @@
 
 ;; ;; ----------------- Concatenation and Extraction ----------------- ;;
 
-;; (define (bvcoerce x [caller 'bvcoerce])
-;;   (assert (typed? x) (type-error caller 'bitvector? x))
-;;   (match x
-;;     [(app get-type (? bitvector?)) x]
-;;     [(union xs) (merge+ (for/list ([gx xs] #:when (is-bitvector? (cdr gx))) gx)
-;;                         #:unless (length xs)
-;;                         #:error (type-error caller 'bitvector? x))]
-;;     [_ (assert #f (type-error caller 'bitvector? x))]))
+(define (fpcoerce x [caller 'fpcoerce])
+  (assert (typed? x) (type-error caller 'float? x))
+  (match x
+    [(app get-type (? float?)) x]
+    [(union xs) (merge+ (for/list ([gx xs] #:when (is-float? (cdr gx))) gx)
+                        #:unless (length xs)
+                        #:error (type-error caller 'float? x))]
+    [_ (assert #f (type-error caller 'float? x))]))
+
+;; I think this is what all the fp predicates will look like. this can
+;; be named in racket-ish, the encoding to smt symbol names happens in
+;; enc.rkt
+(define-operator @fpnormal?
+  #:identifier 'fpnormal?
+  #:range (lambda (x) boolean?)
+  #:unsafe (lambda (x)
+             (match x
+               [(fp s exp sig _) #t] ; TODO: real implementation
+               [_ (expression @fpnormal? x)]))
+  #:safe (lambda (@x)
+           (define x (fpcoerce @x 'fpnormal?))
+           (match x
+             [(? union?) (for/all ([y x]) (fpnormal? y))]
+             [_ (fpnormal? x)])))
 
 ;; (define concat
 ;;   (case-lambda
@@ -627,6 +621,7 @@
 ;;       (match x 
 ;;         [(? union?) (for/all ([y x]) (extract* i j y))]
 ;;         [_ (extract* i j x)]))))
+
      
 
 ;; ;; ----------------- Extension and Coercion ----------------- ;;
