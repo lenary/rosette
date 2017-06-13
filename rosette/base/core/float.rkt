@@ -63,7 +63,7 @@
    (define (type-construct self vs)   (car vs))
    (define (type-deconstruct self v)  (list v))]
   #:methods gen:solvable
-  [(define (solvable-default self) (bv 0 self))
+  [(define (solvable-default self) (fp (bv 0 1) (bv 0 (float-eb self)) (bv 0 (float-sb self)) self))
    (define (solvable-domain self) null)
    (define (solvable-range self) self)]
   #:methods gen:custom-write
@@ -77,7 +77,7 @@
 
 (define (is-float? v) (and (typed? v) (float? (get-type v))))
 
-;; ----------------- Bitvector Literals ----------------- ;; 
+;; ----------------- Floating Point Literals ----------------- ;;
 
 ; Represents a floating point literal.
 (struct fp (sign exponent significand type)
