@@ -582,6 +582,8 @@
     [(_ _ (bv b _)) 
      (bv (sfinitize (bitwise-and (bitwise-not (arithmetic-shift -1 len)) (arithmetic-shift b (- j))) len) 
          (bitvector-type len))]
+    [(_ _ (expression (== @extract) _ inner-j inner-bv))
+     (extract (+ inner-j i) (+ inner-j j) inner-bv)]
     [(_ 0 (expression (== @concat) _ (and (? typed? (app get-type (bitvector (== len)))) a))) a]
     [(_ _ (expression (== @concat) 
                       (and (? typed? (app get-type (bitvector (== len)))) a) 
