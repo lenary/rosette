@@ -52,10 +52,14 @@
   (define-values (id ...)
     (values (lambda e `(id ,@e)) ...)))
 
-; Core theoryRosette: Add support for quantifiers 
-(define Bool 'Bool)
-(define true 'true)
-(define false 'false)
+(define-syntax-rule (define-names id ...)
+  (define-values (id ...)
+    (values 'id ...)))
+
+; Core theoryRosette: Add support for quantifiers
+(define-names
+  Bool
+  true false)
 (define-ops not and or xor => ite = distinct)
 (define (<=> l r) (and (=> l r) (=> r l)))
 
@@ -80,8 +84,7 @@
   `((_ sign_extend ,i) ,b))
 
 ; Int and Real theories
-(define Int 'Int)
-(define Real 'Real)
+(define-names Int Real)
 (define-ops
   + - * / div mod abs 
   < <= 
@@ -97,4 +100,69 @@
 (define (exists vars body)
   (quantified 'exists vars body))
 
+;; Float Theory
+(define (FloatingPoint exp-size significand-size)
+  `(_ FloatingPoint ,exp-size ,significand-size))
+
+(define-names
+  Float16
+  Float32
+  Float64
+  Float128)
+
+; FP Value Constructor
+; TODO: make sure sign, exp, significand are the right number of bits
+(define (fp sign exp significand)
+  `(fp ,sign ,exp ,significand))
+
+; Infinity
+(define (+oo exp-size significand-size)
+  `(_ +oo ,exp-size ,significand-size))
+(define (-oo exp-size significand-size)
+  `(_ -oo ,exp-size ,significand-size))
+
+; Zeroes
+(define (+zero exp-size significand-size)
+  `(_ +zero ,exp-size ,significand-size))
+(define (-zero exp-size significand-size)
+  `(_ -zero ,exp-size ,significand-size))
+
+; NaN
+(define (NaN exp-size significand-size)
+  `(_ NaN ,exp-size ,significand-size))
+
+; Rounding Modes
+(define-names
+  RoundingMode
+  roundNearestTiesToEven RNE
+  roundNearestTiesToAway RNA
+  roundTowardPositive    RTP
+  roundTowardNegative    RTN
+  roundTowardZero        RTZ)
+
+(define-ops
+  fp.abs fp.neg
+  fp.add fp.sub
+  fp.mul fp.div fp.rem fp.fma fp.sqrt
+  fp.roundToIntegral
+  fp.min fp.max
+  fp.eq fp.leq fp.lt fp.geq fp.gt
+  fp.isNormal
+  fp.isSubnormal
+  fp.isZero
+  fp.isInfinite
+  fp.isNaN
+  fp.isNegative
+  fp.isPositive
+  fp.to_real)
+
+(define (to_fp exp-size significand-size . args)
+  `((_ to_fp ,exp-size ,significand-size) ,@args))
+(define (to_fp_unsigned exp-size significand-size . args)
+  `((_ to_fp_unsigned ,exp-size ,significand-size) ,@args))
+
+(define (fp.to_ubv bv-size . args)
+  `((_ fp.to_ubv ,bv-size) ,@args))
+(define (fp.to_sbv bv-size . args)
+  `((_ fp.to_sbv ,bv-size) ,@args))
 
